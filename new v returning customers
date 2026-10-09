@@ -1,29 +1,41 @@
-with first as (
-select
-  parse_date('%Y%m%d', event_date) as order_date,
-  timestamp_micros(event_timestamp) as time_stamp,
-  user_pseudo_id,
-  ecommerce.transaction_id as order_id,
-  ecommerce.purchase_revenue as revenue,
-  traffic_source.source as source,
-  traffic_source.name as campaign,
-  traffic_source.medium as medium,
-from
-  `enter.tablename_123456.events_*`
-where event_name = 'purchase'
-group by 1,2,3,4,5,6,7,8),
+WITH ranked_purchases AS (
+  SELECT
+    COALESCE(user_id, user_pseudo_id) AS customer_id,
+    ecommerce.transaction_id AS order_id,
+    ecommerce.purchase_revenue AS revenue,
+    DATE(TIMESTAMP_MICROS(event_timestamp)) AS order_date,
+    TIMESTAMP_MICROS(event_timestamp) AS order_timestamp,
+    traffic_source.source AS source,
+    traffic_source.medium AS medium,
+    traffic_source.name AS campaign,
+    
+    -- Rank purchases chronologically per customer
+    DENSE_RANK() OVER (
+      PARTITION BY COALESCE(user_id, user_pseudo_id) 
+      ORDER BY event_timestamp ASC
+    ) AS purchase_rank
+  FROM
+    `enter.tablename_123456.events_*`
+  WHERE
+    _TABLE_SUFFIX >= FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE(), INTERVAL 24 MONTH))
+    AND event_name = 'purchase'
+    AND ecommerce.transaction_id IS NOT NULL
+)
 
-second as (
-  select *, 
-  count(order_id) as transactions,
-  case
-    when dense_rank() over(partition by user_pseudo_id order by time_stamp) = 1 then 'new customer' 
-    else 'returning customer'
-  end as customer_type,
-  from first
-  group by 1,2,3,4,5,6,7,8
-  order by order_date)
-
-select * except(time_stamp)
-from second
-order by order_date
+SELECT
+  customer_id,
+  order_id,
+  revenue,
+  order_date,
+  source,
+  medium,
+  campaign,
+  CASE
+    WHEN purchase_rank = 1 THEN 'new customer'
+    ELSE 'returning customer'
+  END AS customer_type
+FROM
+  ranked_purchases
+ORDER BY
+  order_date DESC,
+  order_timestamp DESC;
