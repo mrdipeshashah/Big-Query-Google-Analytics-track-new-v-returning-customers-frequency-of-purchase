@@ -4,12 +4,12 @@ A production-grade collection of BigQuery SQL models for categorizing e-commerce
 
 ## REPOSITORY
 
-### 1. 1.0_new-v-returning-customers.sql
+### 1. 1.0_new-v-returning-customers
 * **Approach:** Binary classification partitioning customer order histories chronologically.
 * **Output Segments:** `new customer` (rank = 1) vs. `returning customer` (rank > 1).
 * **Best Used For:** Evaluating channel acquisition effectiveness, comparing new vs. returning revenue splits over time, and measuring long-term customer retention.
 
-### 2. 1.1_frequency-of-purchase.sql
+### 2. 1.1_frequency-of-purchase
 * **Approach:** Granular purchase ordinal ranking using pre-calculated integer thresholds.
 * **Output Segments:** `first purchase` (rank = 1), `second purchase` (rank = 2), `repeat purchase` (ranks 3–5), and `recurring customer` (ranks > 5).
 * **Best Used For:** Understanding repurchase velocity, subscription/repeat buying models, and customer lifecycle progression.
